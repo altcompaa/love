@@ -127,28 +127,10 @@
     width: 100%;
     height: 100%;
   }
-
-  .love-label {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 42px;
-    color: #fff;
-    font-weight: normal;
-    position: relative;
-    z-index: 10;
-    text-shadow: 0 0 30px rgba(255,255,255,0.3);
-    opacity: 0;
-    transition: opacity 1.5s ease 0.8s;
-    pointer-events: none;
-  }
-
-  #heart-screen.visible .love-label {
-    opacity: 1;
-  }
 </style>
 </head>
 <body>
 
-<!-- ЭКРАН 1 -->
 <div id="terminal-screen">
   <div class="terminal-box">
     <div class="term-line">[system] Initializing heart.PROTOCOL_v2.0 ...</div>
@@ -161,7 +143,6 @@
   </div>
 </div>
 
-<!-- ЭКРАН 2 -->
 <div id="heart-screen">
   <canvas id="heart-canvas"></canvas>
 </div>
@@ -192,13 +173,15 @@
   });
   document.body.addEventListener('click', reveal);
 
-  /* === СЕРДЦЕ === */
   function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
   }
   resize();
-  window.addEventListener('resize', () => { resize(); });
+  window.addEventListener('resize', () => { 
+    resize(); 
+    if (revealed) initHeart(); 
+  });
 
   const phrases = ['i love you', 'love you', 'i love you'];
 
@@ -209,10 +192,10 @@
     const cx = W / 2;
     const cy = H / 2;
 
-    /* Размер сердца — компактный, чётко вписывается в экран */
-    const heartR = Math.min(W, H) * 0.32;
+    /* ИЗМЕНЕНИЯ ТУТ: Увеличили размер для мобильных устройств */
+    // На телефонах (W < 600) сердце теперь занимает почти всю ширину (коэфф 0.45)
+    const heartR = W < 600 ? Math.min(W, H) * 0.45 : Math.min(W, H) * 0.35;
 
-    /* Рисуем сердце на offscreen canvas */
     const off = document.createElement('canvas');
     off.width = W;
     off.height = H;
@@ -222,9 +205,8 @@
     octx.beginPath();
     for (let i = 0; i <= 400; i++) {
       const t = (i / 400) * Math.PI * 2;
-      /* Параметрическая формула сердца, нормированная к [-1,1] */
-      const nx = 16 * Math.pow(Math.sin(t), 3) / 16;          /* -1..1 */
-      const ny = -(13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)) / 13; /* -1..1 */
+      const nx = 16 * Math.pow(Math.sin(t), 3) / 16;
+      const ny = -(13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)) / 13;
       const hx = cx + nx * heartR;
       const hy = cy + ny * heartR;
       i === 0 ? octx.moveTo(hx, hy) : octx.lineTo(hx, hy);
@@ -232,9 +214,8 @@
     octx.closePath();
     octx.fill();
 
-    /* Шаг сетки */
-    const dpr = window.devicePixelRatio || 1;
-    const step = Math.max(11, Math.round(14 * dpr));
+    /* ИЗМЕНЕНИЯ ТУТ: Сделали шаг сетки меньше для мобильных, чтобы надписей было больше */
+    const step = W < 600 ? 11 : 14; 
     const imgData = octx.getImageData(0, 0, W, H);
 
     for (let y = step; y < H - step; y += step) {
@@ -246,15 +227,16 @@
         particles.push({
           x, y,
           text: phrase,
-          size: 8 + Math.random() * 4,
-          alpha: 0.7 + Math.random() * 0.3,   /* ярче! */
-          delay: Math.random() * 2.5,
+          size: W < 600 ? 7 + Math.random() * 3 : 8 + Math.random() * 4,
+          alpha: 0.7 + Math.random() * 0.3,
+          delay: Math.random() * 2,
           pulse: Math.random() * Math.PI * 2,
           speed: 0.5 + Math.random() * 0.8
         });
       }
     }
 
+    cancelAnimationFrame(animFrame);
     let start = null;
     function animate(ts) {
       if (!start) start = ts;
@@ -267,10 +249,11 @@
         const fadeIn = Math.min(age / 0.5, 1);
         const pulse = 0.9 + 0.1 * Math.sin(elapsed * p.speed + p.pulse);
         const a = p.alpha * fadeIn * pulse;
-        /* Яркий красный — от #c00 до #f44 */
+        
         const r = 180 + Math.floor(Math.random() * 55);
         const g = Math.floor(r * 0.08);
         const b = Math.floor(r * 0.08);
+        
         ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
         ctx.font = `bold ${p.size}px 'Courier New', monospace`;
         ctx.fillText(p.text, p.x, p.y);
