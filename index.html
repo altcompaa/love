@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Love You</title>
+<title>❤️</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -209,10 +209,10 @@
     const cx = W / 2;
     const cy = H / 2;
 
-    /* Размер сердца в пикселях */
-    const heartSize = Math.min(W, H) * 0.38;
+    /* Размер сердца — компактный, чётко вписывается в экран */
+    const heartR = Math.min(W, H) * 0.32;
 
-    /* Рисуем сердце на offscreen canvas и считываем пиксели */
+    /* Рисуем сердце на offscreen canvas */
     const off = document.createElement('canvas');
     off.width = W;
     off.height = H;
@@ -220,33 +220,37 @@
 
     octx.fillStyle = '#fff';
     octx.beginPath();
-    for (let i = 0; i <= 300; i++) {
-      const t = (i / 300) * Math.PI * 2;
-      const hx = cx + heartSize * 16 * Math.pow(Math.sin(t), 3) / 17;
-      const hy = cy - heartSize * (13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)) / 17;
+    for (let i = 0; i <= 400; i++) {
+      const t = (i / 400) * Math.PI * 2;
+      /* Параметрическая формула сердца, нормированная к [-1,1] */
+      const nx = 16 * Math.pow(Math.sin(t), 3) / 16;          /* -1..1 */
+      const ny = -(13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)) / 13; /* -1..1 */
+      const hx = cx + nx * heartR;
+      const hy = cy + ny * heartR;
       i === 0 ? octx.moveTo(hx, hy) : octx.lineTo(hx, hy);
     }
     octx.closePath();
     octx.fill();
 
-    /* Шаг сетки — расстояние между надписями */
-    const step = 13;
+    /* Шаг сетки */
+    const dpr = window.devicePixelRatio || 1;
+    const step = Math.max(11, Math.round(14 * dpr));
     const imgData = octx.getImageData(0, 0, W, H);
 
-    for (let y = 0; y < H; y += step) {
-      for (let x = 0; x < W; x += step) {
+    for (let y = step; y < H - step; y += step) {
+      for (let x = step; x < W - step; x += step) {
         const idx = (y * W + x) * 4;
-        if (imgData.data[idx] < 128) continue; /* не внутри сердца */
+        if (imgData.data[idx] < 128) continue;
 
         const phrase = phrases[Math.floor(Math.random() * phrases.length)];
         particles.push({
           x, y,
           text: phrase,
-          size: 7 + Math.random() * 4,
-          alpha: 0.28 + Math.random() * 0.55,
-          delay: Math.random() * 2.8,
+          size: 8 + Math.random() * 4,
+          alpha: 0.7 + Math.random() * 0.3,   /* ярче! */
+          delay: Math.random() * 2.5,
           pulse: Math.random() * Math.PI * 2,
-          speed: 0.4 + Math.random() * 0.7
+          speed: 0.5 + Math.random() * 0.8
         });
       }
     }
@@ -260,12 +264,15 @@
       for (const p of particles) {
         if (elapsed < p.delay) continue;
         const age = elapsed - p.delay;
-        const fadeIn = Math.min(age / 0.7, 1);
-        const pulse = 0.88 + 0.12 * Math.sin(elapsed * p.speed + p.pulse);
+        const fadeIn = Math.min(age / 0.5, 1);
+        const pulse = 0.9 + 0.1 * Math.sin(elapsed * p.speed + p.pulse);
         const a = p.alpha * fadeIn * pulse;
-        const bright = 140 + Math.floor(Math.random() * 70);
-        ctx.fillStyle = `rgba(${bright},${Math.floor(bright*0.12)},${Math.floor(bright*0.12)},${a})`;
-        ctx.font = `${p.size}px 'Courier New', monospace`;
+        /* Яркий красный — от #c00 до #f44 */
+        const r = 180 + Math.floor(Math.random() * 55);
+        const g = Math.floor(r * 0.08);
+        const b = Math.floor(r * 0.08);
+        ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
+        ctx.font = `bold ${p.size}px 'Courier New', monospace`;
         ctx.fillText(p.text, p.x, p.y);
       }
       animFrame = requestAnimationFrame(animate);
