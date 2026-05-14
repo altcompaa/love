@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Love You</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0d0d0d;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', Courier, monospace;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  /* === ЭКРАН 1: ТЕРМИНАЛ === */
+  #terminal-screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    transition: opacity 0.8s ease;
+  }
+
+  #terminal-screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .terminal-box {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 36px 48px;
+    max-width: 480px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(220, 50, 50, 0.1);
+  }
+
+  .term-line {
+    font-size: 13px;
+    color: #e03535;
+    text-align: left;
+    margin-bottom: 6px;
+    opacity: 0;
+    animation: fadeIn 0.5s forwards;
+  }
+
+  .term-line:nth-child(1) { animation-delay: 0.2s; }
+  .term-line:nth-child(2) { animation-delay: 0.8s; }
+  .term-line:nth-child(3) { animation-delay: 1.4s; }
+
+  .term-gap { height: 18px; }
+
+  .term-found {
+    font-size: 13px;
+    color: #aaa;
+    text-align: left;
+    opacity: 0;
+    animation: fadeIn 0.5s 2.1s forwards;
+    margin-bottom: 28px;
+  }
+
+  .decrypt-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #c0282a;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 24px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    opacity: 0;
+    animation: fadeIn 0.5s 2.6s forwards;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .decrypt-btn:hover { background: #a82022; }
+  .decrypt-btn:active { transform: scale(0.97); }
+
+  .hint {
+    font-size: 11px;
+    color: #555;
+    margin-top: 16px;
+    opacity: 0;
+    animation: fadeIn 0.5s 3.0s forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* === ЭКРАН 2: СЕРДЦЕ === */
+  #heart-screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1s ease;
+  }
+
+  #heart-screen.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  #heart-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .love-label {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 42px;
+    color: #fff;
+    font-weight: normal;
+    position: relative;
+    z-index: 10;
+    text-shadow: 0 0 30px rgba(255,255,255,0.3);
+    opacity: 0;
+    transition: opacity 1.5s ease 0.8s;
+    pointer-events: none;
+  }
+
+  #heart-screen.visible .love-label {
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+
+<!-- ЭКРАН 1 -->
+<div id="terminal-screen">
+  <div class="terminal-box">
+    <div class="term-line">[system] Initializing heart.PROTOCOL_v2.0 ...</div>
+    <div class="term-line">[system] Loading encrypted data ...</div>
+    <div class="term-line">[system] Scanning for target ...</div>
+    <div class="term-gap"></div>
+    <div class="term-found">&gt; One encrypted package found for you.</div>
+    <button class="decrypt-btn" id="decryptBtn">🔓 Decrypt message</button>
+    <p class="hint">(or just click anywhere)</p>
+  </div>
+</div>
+
+<!-- ЭКРАН 2 -->
+<div id="heart-screen">
+  <canvas id="heart-canvas"></canvas>
+</div>
+
+<script>
+  const termScreen = document.getElementById('terminal-screen');
+  const heartScreen = document.getElementById('heart-screen');
+  const canvas = document.getElementById('heart-canvas');
+  const ctx = canvas.getContext('2d');
+
+  let revealed = false;
+  let particles = [];
+  let animFrame;
+
+  function reveal() {
+    if (revealed) return;
+    revealed = true;
+    termScreen.classList.add('hidden');
+    setTimeout(() => {
+      heartScreen.classList.add('visible');
+      initHeart();
+    }, 400);
+  }
+
+  document.getElementById('decryptBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    reveal();
+  });
+  document.body.addEventListener('click', reveal);
+
+  /* === СЕРДЦЕ === */
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', () => { resize(); });
+
+  const phrases = ['i love you', 'love you', 'i love you'];
+
+  function initHeart() {
+    particles = [];
+    const W = canvas.width;
+    const H = canvas.height;
+    const cx = W / 2;
+    const cy = H / 2;
+
+    /* Размер сердца в пикселях */
+    const heartSize = Math.min(W, H) * 0.38;
+
+    /* Рисуем сердце на offscreen canvas и считываем пиксели */
+    const off = document.createElement('canvas');
+    off.width = W;
+    off.height = H;
+    const octx = off.getContext('2d');
+
+    octx.fillStyle = '#fff';
+    octx.beginPath();
+    for (let i = 0; i <= 300; i++) {
+      const t = (i / 300) * Math.PI * 2;
+      const hx = cx + heartSize * 16 * Math.pow(Math.sin(t), 3) / 17;
+      const hy = cy - heartSize * (13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)) / 17;
+      i === 0 ? octx.moveTo(hx, hy) : octx.lineTo(hx, hy);
+    }
+    octx.closePath();
+    octx.fill();
+
+    /* Шаг сетки — расстояние между надписями */
+    const step = 13;
+    const imgData = octx.getImageData(0, 0, W, H);
+
+    for (let y = 0; y < H; y += step) {
+      for (let x = 0; x < W; x += step) {
+        const idx = (y * W + x) * 4;
+        if (imgData.data[idx] < 128) continue; /* не внутри сердца */
+
+        const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+        particles.push({
+          x, y,
+          text: phrase,
+          size: 7 + Math.random() * 4,
+          alpha: 0.28 + Math.random() * 0.55,
+          delay: Math.random() * 2.8,
+          pulse: Math.random() * Math.PI * 2,
+          speed: 0.4 + Math.random() * 0.7
+        });
+      }
+    }
+
+    let start = null;
+    function animate(ts) {
+      if (!start) start = ts;
+      const elapsed = (ts - start) / 1000;
+      ctx.clearRect(0, 0, W, H);
+
+      for (const p of particles) {
+        if (elapsed < p.delay) continue;
+        const age = elapsed - p.delay;
+        const fadeIn = Math.min(age / 0.7, 1);
+        const pulse = 0.88 + 0.12 * Math.sin(elapsed * p.speed + p.pulse);
+        const a = p.alpha * fadeIn * pulse;
+        const bright = 140 + Math.floor(Math.random() * 70);
+        ctx.fillStyle = `rgba(${bright},${Math.floor(bright*0.12)},${Math.floor(bright*0.12)},${a})`;
+        ctx.font = `${p.size}px 'Courier New', monospace`;
+        ctx.fillText(p.text, p.x, p.y);
+      }
+      animFrame = requestAnimationFrame(animate);
+    }
+    animFrame = requestAnimationFrame(animate);
+  }
+</script>
+</body>
+</html>
